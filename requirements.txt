@@ -4,3 +4,4 @@ Django==3.2.9
 google-cloud-firestore==2.1.0
 djangorestframework==3.12.4
 yagmail[all]==0.14.260
+python-dotenv==0.19.2
