@@ -1,5 +1,30 @@
-from dataclasses import dataclass, field
 from datetime import datetime
+import requests
+import pandas as pd
+
+from alert_me.models import Availability
+
+
+def fetch_availabilities(reservation_date, length=2, min_size=0, name=None, start_time=None, end_time=None, **kw):
+    r = requests.get(
+        url="https://www.quickstudio.com/en/studios/hf-music-studio-14/bookings",
+        headers={"accept": "application/json"},
+        params={"date": reservation_date.isoformat()})
+    results = r.json()
+    availabilities = []
+    for room in results:
+        room_availabilities = get_availabilities(room["bookings"], room["open"], room["close"])
+        for availabily in room_availabilities:
+            availabilities.append({
+                "date": reservation_date.isoformat(),
+                "name": room["name"],
+                "size": room["size"],
+                "start_time": availabily.start.strftime("%H:%M"),
+                "end_time": availabily.end.strftime("%H:%M"),
+                "span": availabily.span
+            })
+    availabilities = pd.DataFrame(availabilities, columns=["date", "name", "size", "start_time", "end_time", "span"])
+    return filter_availabilities(availabilities, length, min_size, name, start_time, end_time)
 
 
 def get_availabilities(bookings, open, close):
@@ -21,14 +46,4 @@ def filter_availabilities(avail, length=2, min_size=0, name=None, start_time=Non
     if start_time: avail = avail[avail["start_time"] >= start_time]
     if end_time: avail = avail[avail["end_time"] <= end_time]
     return avail
-
-
-@dataclass
-class Availability:
-    start: datetime
-    end: datetime
-    span: float = field(init=False)
-
-    def __post_init__(self):
-        self.span = round(((self.end - self.start).total_seconds())/3600, 1)
 
