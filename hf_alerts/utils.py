@@ -1,6 +1,8 @@
 from datetime import datetime
 import requests
 import pandas as pd
+import os
+import yagmail
 
 from alert_me.models import Availability
 
@@ -47,3 +49,26 @@ def filter_availabilities(avail, length=2, min_size=0, name=None, start_time=Non
     if end_time: avail = avail[avail["end_time"] <= end_time]
     return avail
 
+
+def notify_by_mail(availabilities):
+    date = availabilities["date"].iloc[0]
+    str_availabilities = "\n".join([
+        f"- {row['name']} ({row['size']} m²): on the {row['date']}, from {row['start_time']} to {row['start_time']}"
+        for idx, row in availabilities.iterrows()])
+    message = f"""the following new availabilities have been detected:
+        
+{str_availabilities}
+        
+Proceed to the following address to make a reservation:
+https://www.quickstudio.com/en/studios/hf-music-studio-14/bookings
+"""
+    receiver = os.environ["GMAIL_RECEIVER"]
+    yag = yagmail.SMTP(
+        user=os.environ["GMAIL_ACCOUNT"],
+        password=os.environ["GMAIL_PASSWORD"]
+    )
+    yag.send(
+        to=os.environ["GMAIL_RECEIVER"],
+        subject=f"[HF SCRAPPER] New room available for the {date}",
+        contents=message
+    )

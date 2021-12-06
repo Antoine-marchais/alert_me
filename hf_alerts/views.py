@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 import pandas as pd
 
-from hf_alerts.utils import fetch_availabilities
+from hf_alerts.utils import fetch_availabilities, notify_by_mail
 
 
 class Alerts(View):
@@ -78,6 +78,8 @@ def get_new_availabilities(request: HttpRequest, user_id, alert_id):
         alert_ref.collection("availabilities").document().set(row.to_dict())
     for idx, row in to_remove.iterrows():
         alert_ref.collection("availabilities").document(row["id"]).delete()
+    if len(to_add) > 0:
+        notify_by_mail(to_add)
     return JsonResponse(resp)
 
 
