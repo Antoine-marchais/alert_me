@@ -1,0 +1,1 @@
+from alert_me.wsgi import application as app
