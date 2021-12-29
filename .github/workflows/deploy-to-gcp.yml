@@ -1,0 +1,23 @@
+name: deploy-to-gcp
+on:
+  push:
+    branches: ["main"]
+env:
+  GCP_PROJECT: alert-everywhere
+  GCP_REGION: europe-west1
+jobs:
+  deploy-function:
+    runs-on: ubuntu-latest
+    container: gcr.io/google.com/cloudsdktool/cloud-sdk
+    steps:
+      - uses: actions/checkout@v2
+      - run: 'echo "$GCP_KEY" > key_file.json'
+        shell: bash
+        env:
+          GCP_KEY: ${{ secrets.GCP_SERVICE_KEY }}
+      - name: deploy app engine
+        run: |
+          gcloud auth activate-service-account --key-file=key_file.json
+          gcloud config set project $GCP_PROJECT
+          gcloud secrets versions access latest --secret=alerts_app_env > .env
+          gcloud app deploy
