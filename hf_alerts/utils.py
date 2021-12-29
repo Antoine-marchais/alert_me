@@ -2,7 +2,7 @@ from datetime import datetime
 import requests
 import pandas as pd
 import os
-import yagmail
+from google.cloud import scheduler
 
 from alert_me.models import Availability
 
@@ -50,25 +50,36 @@ def filter_availabilities(avail, length=2, min_size=0, name=None, start_time=Non
     return avail
 
 
-def notify_by_mail(availabilities):
-    date = availabilities["date"].iloc[0]
-    str_availabilities = "\n".join([
-        f"- {row['name']} ({row['size']} m²): on the {row['date']}, from {row['start_time']} to {row['start_time']}"
-        for idx, row in availabilities.iterrows()])
-    message = f"""the following new availabilities have been detected:
-        
-{str_availabilities}
-        
-Proceed to the following address to make a reservation:
-https://www.quickstudio.com/en/studios/hf-music-studio-14/bookings
-"""
-    receiver = os.environ["GMAIL_RECEIVER"]
-    yag = yagmail.SMTP(
-        user=os.environ["GMAIL_ACCOUNT"],
-        password=os.environ["GMAIL_PASSWORD"]
+def get_availabilities_difference(current_availabilities, saved_availabilities):
+    current_availabilities["primary_key"] = \
+        current_availabilities["name"] + current_availabilities["start_time"] + current_availabilities["span"].map(str)
+    saved_availabilities["primary_key"] = \
+        saved_availabilities["name"] + saved_availabilities["start_time"] + saved_availabilities["span"].map(str)
+    to_add = current_availabilities[~current_availabilities["primary_key"]
+        .isin(saved_availabilities["primary_key"])].drop(columns=["primary_key"])
+    to_remove = saved_availabilities.loc[~saved_availabilities["primary_key"]
+        .isin(current_availabilities["primary_key"]), ["id"]]
+    return to_add, to_remove
+
+
+def set_scheduled_job(user_id, alert_id):
+    minute = datetime.now().minute
+    client = scheduler.CloudSchedulerClient()
+    parent = f"projects/{os.environ['GCP_PROJECT']}/locations/{os.environ['GCP_APP_LOCATION']}"
+    job = client.create_job(
+        request={
+            "parent": parent,
+            "job": {
+                "schedule": f"{minute} * * * *",
+                "time_zone": "Europe/Paris",
+                "app_engine_http_target": {
+                    "http_method": 2,
+                    "app_engine_routing": {"service": "default"},
+                    "relative_uri": f"/user/{user_id}/hf_alerts/{alert_id}/new_availabilities/"
+                }
+            }
+        },
     )
-    yag.send(
-        to=os.environ["GMAIL_RECEIVER"],
-        subject=f"[HF SCRAPPER] New room available for the {date}",
-        contents=message
-    )
+    return job.name
+
+
