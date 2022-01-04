@@ -21,8 +21,8 @@ def fetch_availabilities(reservation_date, length=2, min_size=0, name=None, star
                 "date": reservation_date.isoformat(),
                 "name": room["name"],
                 "size": room["size"],
-                "start_time": availabily.start.strftime("%H:%M"),
-                "end_time": availabily.end.strftime("%H:%M"),
+                "start_time": availabily.start.replace(tzinfo=None).isoformat(),
+                "end_time": availabily.end.replace(tzinfo=None).isoformat(),
                 "span": availabily.span
             })
     availabilities = pd.DataFrame(availabilities, columns=["date", "name", "size", "start_time", "end_time", "span"])
@@ -41,12 +41,12 @@ def get_availabilities(bookings, open, close):
     return list(filter(lambda avail: avail.span > 0, availabilities))
 
 
-def filter_availabilities(avail, length=2, min_size=0, name=None, start_time=None, end_time=None):
-    avail = avail[avail["span"] >= length]
+def filter_availabilities(avail, length=2, min_size=0, name=None, start_time="2000-01-01T00:00:00", end_time="3000-01-01T00:00:00"):
+    avail_lengths = avail.apply(lambda row: (datetime.fromisoformat(min(row["end_time"], end_time))
+                                - datetime.fromisoformat(max(row["start_time"], start_time))).seconds/3600, axis=1)
+    avail = avail[avail_lengths >= length]
     avail = avail[avail["size"] >= min_size]
     if name: avail = avail[avail["name"] == name]
-    if start_time: avail = avail[avail["start_time"] >= start_time]
-    if end_time: avail = avail[avail["end_time"] <= end_time]
     return avail
 
 

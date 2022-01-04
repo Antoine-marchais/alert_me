@@ -1,12 +1,13 @@
 import os
 import yagmail
 import requests
+from datetime import datetime
 
 
 def notify_by_mail(availabilities):
     date = availabilities["date"].iloc[0]
     str_availabilities = "\n".join([
-        f"- {row['name']} ({row['size']} m²): on the {row['date']}, from {row['start_time']} to {row['end_time']}"
+        f"- {row['name']} ({row['size']} m²): on the {row['date']}, from {datetime.fromisoformat(row['start_time']).strftime('%H:%M')} to {datetime.fromisoformat(row['end_time']).strftime('%H:%M')}"
         for idx, row in availabilities.iterrows()])
     message = f"""the following new availabilities have been detected:
 
@@ -34,8 +35,8 @@ def notify_by_tl(availabilities):
         "availabilities": [{
             "name": row["name"],
             "size": row["size"],
-            "start_time": row["start_time"],
-            "end_time": row["end_time"]
+            "start_time": datetime.fromisoformat(row['start_time']).strftime('%H:%M'),
+            "end_time": datetime.fromisoformat(row['end_time']).strftime('%H:%M'),
         } for idx, row in availabilities.iterrows()],
         "url": f"https://www.quickstudio.com/en/studios/hf-music-studio-14/bookings?date={date}",
         "to": int(os.environ["TL_RECEIVER"])
