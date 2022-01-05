@@ -43,7 +43,7 @@ def get_availabilities(bookings, open, close):
 
 def filter_availabilities(avail, length=2, min_size=0, name=None, start_time="2000-01-01T00:00:00", end_time="3000-01-01T00:00:00"):
     avail_lengths = avail.apply(lambda row: (datetime.fromisoformat(min(row["end_time"], end_time))
-                                - datetime.fromisoformat(max(row["start_time"], start_time))).seconds/3600, axis=1)
+                                - datetime.fromisoformat(max(row["start_time"], start_time))).total_seconds()/3600, axis=1)
     avail = avail[avail_lengths >= length]
     avail = avail[avail["size"] >= min_size]
     if name: avail = avail[avail["name"] == name]
